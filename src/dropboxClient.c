@@ -66,10 +66,12 @@ int authenticate_user(SSL *ssl, char *userid)
 }
 
 //VIROU A FUNÇÃO DA THREAD SEPARADA DO DAEMON
-void* sync_client(void *socket_sync)
+void* sync_client(void *ssl)
 {
 	char buffer[BUFFER_SIZE];
-	int socketfd = *(int*)socket_sync;
+	//int socketfd = *(int*)socket_sync;
+
+	SSL *ssl_sync = (SSL *)ssl;
 
 	// executa primeiro o sync server para não haver problemas
 	while(1)
@@ -426,7 +428,7 @@ int main(int argc, char *argv[])
     }
 
 	pthread_t initial_sync_client;
-	pthread_create(&initial_sync_client, NULL, sync_client, (void*)newsync);
+	pthread_create(&initial_sync_client, NULL, sync_client, (void*)ssl_sync);
 	pthread_detach(initial_sync_client);
 
 	bzero(buffer, BUFFER_SIZE);

@@ -531,6 +531,27 @@ void sync_server(int socketfd)
 	write(socketfd, buffer, 1);
 }
 
+void create_SSL_method_contexts()
+{
+    // cria contextos para o SSL da thread principal do cliente
+    main_method = SSLv23_client_method();
+    main_context = SSL_CTX_new(main_method);
+    if(main_context == NULL)
+    {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+    
+    // cria contextos para o SSL da thread de sync
+    sync_method = SSLv23_client_method();
+    sync_context = SSL_CTX_new(sync_method);
+    if(sync_context == NULL)
+    {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -569,6 +590,41 @@ int main(int argc, char *argv[])
 		printf("Not enough arguments passed.");
 		exit(1);
 	}
+
+	// inicialização das estruturas necessarias para o SSL
+	init_SSL();
+
+	SSL_METHOD *main_method;
+    SSL_CTX *main_context;
+    SSL *ssl_main;
+
+	SSL_METHOD *sync_method;
+    SSL_CTX *sync_context;
+    SSL *ssl_sync;
+
+	// inicialização dos contextos SSL da main thread e da sync thread.
+    main_method = SSLv23_server_method();
+    main_context = SSL_CTX_new(main_method);
+    if (main_context == NULL) {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+
+    sync_method = SSLv23_client_method();
+    sync_context = SSL_CTX_new(sync_method);
+    if(sync_context == NULL)
+    {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+
+	// load dos certificados do SSL para as threads main e sync
+	SSL_CTX_use_certificate_file(sync_context, "CertFile.pem", SSL_FILETYPE_PEM);
+	SSL_CTX_use_PrivateKey_file(sync_context, "KeyFile.pem", SSL_FILETYPE_PEM);
+	SSL_CTX_use_certificate_file(main_context, "CertFile.pem", SSL_FILETYPE_PEM);
+	SSL_CTX_use_PrivateKey_file(main_context, "KeyFile.pem", SSL_FILETYPE_PEM);
+
+	
 	
 	int PORT = atoi(argv[1]);
 	
@@ -591,6 +647,16 @@ int main(int argc, char *argv[])
 		if( (socket_client = accept(socket_connection, (struct sockaddr *) &client_addr, &client_len)) )
 
 		{
+			// SSL handshake
+			ssl_main = SSL_new(main_context);
+            SSL_set_fd(ssl_main, socket_client);
+            int ssl_err = SSL_accept(ssl_main);
+            if(ssl_err <= 0)
+            {
+                printf("[main] Error initializing SSL\n");
+                exit(1);
+			}
+
 			char clientid[MAXNAME];
 
 			// cliente me manda id
@@ -663,6 +729,8 @@ int main(int argc, char *argv[])
 				int *new_new_sock;
 				new_new_sock = malloc(1);
 			   	*new_new_sock = socket_sync;
+
+				//inicializa o SSL para a thread de sync
 
 				// atualiza o devices do cliente com o socketfd usado pra sync
 
