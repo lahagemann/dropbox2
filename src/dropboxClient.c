@@ -5,6 +5,12 @@
 
 client self;
 char home[256];
+SSL_METHOD *sync_method;
+SSL_METHOD *main_method;
+SSL_CTX *sync_context;
+SSL_CTX *main_context;
+SSL *ssl_sync;
+SSL *ssl_main;
 
 int connect_server(char *host, int port)
 {
@@ -30,6 +36,33 @@ int connect_server(char *host, int port)
         printf("ERROR connecting\n");
 
 	return socketfd;
+}
+
+int authenticate_user(SSL *ssl, char *userid)
+{
+    printf("Authenticating user...\n");
+    
+    char buffer[BUFFER_SIZE];
+    
+    //manda userid para o server
+	bzero(buffer, BUFFER_SIZE);
+	memcpy(buffer, self.userid, MAXNAME);
+	SSL_write(ssl, buffer, MAXNAME);
+
+	// recebe um ok do servidor para continuar a conexão
+	bzero(buffer, BUFFER_SIZE);
+	SSL_read(ssl, buffer, 1);
+
+
+	if(buffer[0] == 'A')
+	{
+		printf("Connected. :)\n");
+		return 1;
+	else
+	{
+		printf("Authentication failed. Disconnecting...\n");
+		return 0;
+	}
 }
 
 //VIROU A FUNÇÃO DA THREAD SEPARADA DO DAEMON
@@ -267,6 +300,49 @@ void* sync_client(void *socket_sync)
 	}
 }
 
+void create_SSL_method_contexts()
+{
+    // cria contextos para o SSL da thread principal do cliente
+    main_method = SSLv23_client_method();
+    main_context = SSL_CTX_new(main_method);
+    if(main_context == NULL)
+    {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+    
+    // cria contextos para o SSL da thread de sync
+    sync_method = SSLv23_client_method();
+    sync_context = SSL_CTX_new(sync_method);
+    if(sync_context == NULL)
+    {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+}
+
+void add_SSL_to_main_socket(int socketfd)
+{
+    ssl_main = SSL_new(main_context);
+    SSL_set_fd(ssl_main, socketfd);
+    if(SSL_connect(ssl_main) == -1)
+        ERR_print_errors_fp(stderr);
+    else
+    {
+        X509 *certificate;
+        char *line;
+        certificate = SSL_get_peer_certificate(ssl_main);
+        if(certificate != NULL) 
+        {
+            line = X509_NAME_oneline(X509_get_subject_name(certificate),0,0);
+            printf("Client: %s\n", line);
+            free(line);
+            line = X509_NAME_oneline(X509_get_issuer_name(certificate),0,0);
+            printf("Certificate issuer: %s\n", line);
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
     int socketfd;
@@ -285,25 +361,22 @@ int main(int argc, char *argv[])
 	strcat(home, getlogin());
 	
 	init_client(&self, home, argv[1]);
+	init_SSL();
+	create_SSL_method_contexts();
 	
 	// conecta este cliente com o servidor, que criará uma thread para administrá-lo
 	socketfd = connect_server(argv[2], atoi(argv[3]));
-
-	//manda userid para o server
-	bzero(buffer, BUFFER_SIZE);
-	memcpy(buffer, self.userid, MAXNAME);
-	write(socketfd, buffer, MAXNAME);
-
-	// recebe um ok do servidor para continuar a conexão
-	bzero(buffer, BUFFER_SIZE);
-	read(socketfd, buffer, 1);
-
-
-	if(buffer[0] == 'A')
-		printf("Connected. :)\n");
-	else
+	
+	// adiciona SSL ao socket conectado.
+	add_SSL_to_main_socket(socketfd);
+	
+	// autentica usuário conectado
+	int user_valid = authenticate_user(ssl_main, self.userid);
+	
+	if(!user_valid)
 	{
-		printf("Connected in more than 2 devices. Disconnecting...");
+	    SSL_shutdown(ssl_sync);
+	    SSL_free(ssl_sync);
 		close(socketfd);
 		exit(1);
 	}

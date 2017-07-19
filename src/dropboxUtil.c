@@ -273,7 +273,7 @@ int file_more_recent_than(file_info f1, file_info f2)
 	}
 }
 
-void receive_file(char* file_name, int client_socket)
+void receive_file(char* file_name, SSL *ssl)
 {
     char buffer[256], char_buffer[1];
     int error;
@@ -291,14 +291,14 @@ void receive_file(char* file_name, int client_socket)
 
 
     bzero(char_buffer, 1);
-    read(client_socket, char_buffer, 1);
+    SSL_read(ssl, char_buffer, 1);
 	//printf("%c\n", char_buffer[0]);
     //fputc(char_buffer[0], fp);
     while(char_buffer[0] != 25)
     {
         fprintf (fp, "%c", char_buffer[0]);
         bzero(char_buffer, 1);
-        read(client_socket, char_buffer, 1);
+        SSL_read(ssl, char_buffer, 1);
 		//printf("%d\n", char_buffer[0]);
         
 	}
@@ -307,7 +307,7 @@ void receive_file(char* file_name, int client_socket)
     
 }
 
-void send_file(char *file, int server_socket)
+void send_file(char *file, SSL *ssl)
 {
 	char string[2], buffer[1];
 	FILE *fp;
@@ -323,12 +323,12 @@ void send_file(char *file, int server_socket)
 		bzero(buffer, 1);
 		buffer[0] = string[0];
 		//printf("%c", buffer[0]);
-		write(server_socket, buffer, 1);
+		SSL_write(ssl, buffer, 1);
 	}
 	
 	bzero(buffer, 1);
 	buffer[0] = 25;
-	write(server_socket, buffer, 1);
+	SSL_write(ssl, buffer, 1);
 
 	fclose(fp);
 }
@@ -337,5 +337,16 @@ void remove_file(char *filename)
 {
 	unlink(filename);
 }
+
+// SSL
+
+void init_SSL()
+{
+    SSL_load_error_strings();
+    SSL_library_init();
+    OpenSSL_add_all_algorithms();
+}
+
+
 
 
