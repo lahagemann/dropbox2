@@ -121,8 +121,6 @@ void* run_client(void *ssl)
 	SSL_read(ssl_main, buffer, MAXNAME);
 	memcpy(clientid, buffer, MAXNAME);
 	
-	printf("cliid: %s\n", clientid);
-
 	client *cli = malloc(sizeof(client));
  
 	while(1) {
@@ -589,7 +587,7 @@ int main(int argc, char *argv[])
         abort();
     }
 
-    sync_method = SSLv23_client_method();
+    sync_method = SSLv23_server_method();
     sync_context = SSL_CTX_new(sync_method);
     if(sync_context == NULL)
     {
@@ -663,17 +661,16 @@ int main(int argc, char *argv[])
 				close(socket_client);
 				break;
 			}
-
+				
+			pthread_t client_thread;
+			pthread_create(&client_thread, NULL, run_client, (void*)ssl_main);
+			pthread_detach(client_thread);
 
 			// agora cria a outra conexão. 
 			// envia quantos clientes estão conectados para o cliente saber em que +x porta deve conectar o sync
 			bzero(buffer, BUFFER_SIZE);
 			buffer[0] = clients;
 			SSL_write(ssl_main, buffer, 1);
-			
-			pthread_t client_thread;
-			pthread_create(&client_thread, NULL, run_client, (void*)ssl_main);
-			pthread_detach(client_thread);
 
 			// fica esperando a segunda conexão do sync e quando recebe, cria outro socket/thread.
 			int socket_conn, socket_sync;
