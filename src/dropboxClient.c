@@ -349,11 +349,16 @@ void add_SSL_to_main_socket(int socketfd)
 void add_SSL_to_sync_socket(int socketfd)
 {
     ssl_sync = SSL_new(sync_context);
+	printf("%p\n", ssl_sync);
     SSL_set_fd(ssl_sync, socketfd);
     if(SSL_connect(ssl_sync) == -1)
+	{
+		printf("oi\n");
         ERR_print_errors_fp(stderr);
+	}
     else
     {
+		printf("ué?\n");
         X509 *certificate;
         char *line;
         certificate = SSL_get_peer_certificate(ssl_sync);
@@ -410,13 +415,15 @@ int main(int argc, char *argv[])
 	bzero(buffer, BUFFER_SIZE);
 	SSL_read(ssl_main, buffer, 1);
 	int clients = buffer[0];
-	
-	
 
 	// conecta um novo socket na porta +1 para fazer o sync apenas sem bloquear o programa de comandos.
 	sync_socketfd = connect_server(argv[2], atoi(argv[3])+clients);
 
+	printf("i tried so hard and got so far\n");
+
 	add_SSL_to_sync_socket(sync_socketfd);
+
+	printf("in the end it doesn't even matter\n");
 
 	// dispara nova thread pra fazer o sync_client
 

@@ -117,8 +117,6 @@ void* run_client(void *ssl)
 
 	char clientid[MAXNAME];
 	
-	printf("%p\n", ssl_main);
-
 	bzero(buffer, BUFFER_SIZE);
 	SSL_read(ssl_main, buffer, MAXNAME);
 	memcpy(clientid, buffer, MAXNAME);
