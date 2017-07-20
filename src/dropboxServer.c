@@ -109,26 +109,27 @@ int insert_client(client *clientinfo){
 	return NOT_VALID;
 }
 
-void* run_client(void *conn_info)
+void* run_client(void *ssl)
 {
 	char buffer[BUFFER_SIZE];
 	char message;
-	//connection_info ci = *(connection_info*)conn_info;
-	int socketfd = *(int *)conn_info; //ci.socket_client;
+	SSL *ssl_main = (SSL *)ssl; 
 
 	char clientid[MAXNAME];
-
-	//printf("running client\n");
+	
+	printf("%p\n", ssl_main);
 
 	bzero(buffer, BUFFER_SIZE);
-	read(socketfd, buffer, MAXNAME);
+	SSL_read(ssl_main, buffer, MAXNAME);
 	memcpy(clientid, buffer, MAXNAME);
+	
+	printf("cliid: %s\n", clientid);
 
 	client *cli = malloc(sizeof(client));
  
 	while(1) {
 		bzero(buffer, BUFFER_SIZE);
-		message = read(socketfd, buffer, 1);
+		message = SSL_read(ssl_main, buffer, 1);
 		if (message < 0) 
 			printf("ERROR reading from socket");
 		else {
@@ -145,7 +146,7 @@ void* run_client(void *conn_info)
 				case DOWNLOAD:
 					{
 						bzero(buffer, BUFFER_SIZE);
-						read(socketfd, buffer, MAXNAME);
+						SSL_read(ssl_main, buffer, MAXNAME);
 
 						int client_index = return_client(clientid, cli);						
 
@@ -156,7 +157,7 @@ void* run_client(void *conn_info)
 							// manda mensagem de arquivo existente.
 							bzero(buffer, BUFFER_SIZE);
 							buffer[0] = FILE_FOUND;
-							write(socketfd, buffer, 1);
+							SSL_write(ssl_main, buffer, 1);
 
 							// prepara o caminho do diretório sync para enviar o arquivo
 							char fullpath[MAXNAME];
@@ -169,21 +170,21 @@ void* run_client(void *conn_info)
 							strcat(fullpath, connected_clients[client_index].fileinfo[index].extension);
 
 							// manda arquivo	
-							send_file(fullpath, socketfd);
+							send_file(fullpath, ssl_main);
 						}
 						else
 						{
 							// manda mensagem de arquivo inexistente.
 							bzero(buffer, BUFFER_SIZE);
 							buffer[0] = FILE_NOT_FOUND;
-							write(socketfd, buffer, 1);
+							SSL_write(ssl_main, buffer, 1);
 						}
 					}
 					break;
 				case UPLOAD:
 					{
 						bzero(buffer, BUFFER_SIZE);
-						read(socketfd, buffer, MAXNAME);
+						SSL_read(ssl_main, buffer, MAXNAME);
 
 						// pegar o último elemento
 						char file[256];
@@ -200,7 +201,7 @@ void* run_client(void *conn_info)
 						strcat(fullpath, connected_clients[client_index].userid);
 						strcat(fullpath, filename);
 
-						receive_file(fullpath, socketfd);
+						receive_file(fullpath, ssl_main);
 					}					
 					break;
 				case LIST:
@@ -209,7 +210,7 @@ void* run_client(void *conn_info)
 						
 						bzero(buffer, BUFFER_SIZE);
 						list_files(&(connected_clients[client_index]), buffer);
-						write(socketfd, buffer, BUFFER_SIZE);
+						SSL_write(ssl_main, buffer, BUFFER_SIZE);
 					}
 					break;
 				default:
@@ -218,13 +219,17 @@ void* run_client(void *conn_info)
 		}
 	}
 
-	close(socketfd);
+    SSL_shutdown(ssl_main);
+    //	close(socketfd);
+	SSL_free(ssl_main);
 }
 
-void* run_sync(void *socket_sync)
+void* run_sync(void *conn_info)
 {
 	char buffer[BUFFER_SIZE];
-	int socketfd = *(int*)socket_sync;
+	connection_info ci = *(connection_info *)conn_info;
+	SSL *ssl_sync = ci.ssl_sync;
+	int socketfd = ci.socket_sync;
 	char message;
 
 	int cliindex;
@@ -234,13 +239,13 @@ void* run_sync(void *socket_sync)
 	{
 		printf("syncing...\n");
 		// aí executa aqui o sync_server.
-		sync_server(socketfd);
+		sync_server(ci);
 
 		// aí aqui executa o loop de aceite do sync_client
 
 
 		bzero(buffer, BUFFER_SIZE);
-		message = read(socketfd, buffer, 1);
+		message = SSL_read(ssl_sync, buffer, 1);
 
 		if (message < 0) 
 			printf("ERROR reading from socket");
@@ -254,22 +259,19 @@ void* run_sync(void *socket_sync)
 				//recebe id do cliente. ---> VER SE NÃO É MELHOR ELE RECEBER ANTES???
 				//pegar os dados do buffer
 				bzero(buffer, BUFFER_SIZE);
-				read(socketfd, buffer, MAXNAME);
+				SSL_read(ssl_sync, buffer, MAXNAME);
 				memcpy(client_id, buffer, MAXNAME);
-
 
 				// pega cliente na lista de clientes e envia o mirror para o cliente.
 				client *cli = malloc(sizeof(client));
 				cliindex = return_client(client_id, cli);
-
-
 
 				update_client(&(connected_clients[cliindex]), home);
 	
 				// AQUI DÁ PROBLEMA
 				bzero(buffer,BUFFER_SIZE);
 				memcpy(buffer, &(connected_clients[cliindex]), sizeof(client));
-				write(socketfd, buffer, sizeof(client));
+				SSL_write(ssl_sync, buffer, sizeof(client));
 
 				// agora fica em um while !finished, fica recebendo comandos de download/delete
 				while(1)
@@ -278,15 +280,14 @@ void* run_sync(void *socket_sync)
 					char fname[MAXNAME];
 
 					bzero(buffer,BUFFER_SIZE);
-					read(socketfd, buffer, 1);
+					SSL_read(ssl_sync, buffer, 1);
 					command = buffer[0];
 
 					if(command == DOWNLOAD)
 					{
-
 						// recebe nome do arquivo
 						bzero(buffer,BUFFER_SIZE);
-						read(socketfd, buffer, MAXNAME);
+						SSL_read(ssl_sync, buffer, MAXNAME);
 						memcpy(fname, buffer, MAXNAME);
 						
 						// procura arquivo
@@ -299,7 +300,7 @@ void* run_sync(void *socket_sync)
 						// manda struct	
 						bzero(buffer,BUFFER_SIZE);
 						memcpy(buffer, &f, sizeof(struct file_info));
-						write(socketfd, buffer, sizeof(struct file_info));
+						SSL_write(ssl_sync, buffer, sizeof(struct file_info));
 
 						// receive file funciona com full path
 						char fullpath[MAXNAME];
@@ -313,14 +314,14 @@ void* run_sync(void *socket_sync)
 
 
 						// manda arquivo				
-						send_file(fullpath, socketfd);
+						send_file(fullpath, ssl_sync);
 					}
 					else if(command == DELETE)
 					{
 						bzero(buffer,BUFFER_SIZE);
 
 						// recebe nome do arquivo
-						read(socketfd, buffer, MAXNAME);
+						SSL_read(ssl_sync, buffer, MAXNAME);
 						memcpy(fname, buffer, MAXNAME);
 
 						// procura arquivo
@@ -365,17 +366,20 @@ void* run_sync(void *socket_sync)
 	}
 }
 
-void sync_server(int socketfd)
+void sync_server(connection_info ci)
 {
 	struct client client_mirror;
 	char buffer[BUFFER_SIZE];
+	
+	SSL *ssl_sync = ci.ssl_sync;
+	int socketfd = ci.socket_sync;
 
 	//server fica esperando o cliente enviar seu mirror
 	// AQUI DÁ PROBLEMA
 	int n = 0;
 	bzero(buffer,BUFFER_SIZE);
 	while(n < sizeof(struct client))
-		n += read(socketfd, buffer+n, 1);
+		n += SSL_read(ssl_sync, buffer+n, 1);
 	memcpy(&client_mirror, buffer, sizeof(struct client));
 	
 
@@ -423,11 +427,11 @@ void sync_server(int socketfd)
 					// pede para o cliente mandar o arquivo
 					bzero(buffer,BUFFER_SIZE);
 					buffer[0] = DOWNLOAD;
-					write(socketfd, buffer, 1);
+					SSL_write(ssl_sync, buffer, 1);
 
 					bzero(buffer,BUFFER_SIZE);
 					memcpy(buffer, &client_mirror.fileinfo[i].name, MAXNAME);
-					write(socketfd, buffer, MAXNAME);
+					SSL_write(ssl_sync, buffer, MAXNAME);
 
 					// DA PROBLEMA COM TAMANHO DO BUFFER:
 					struct file_info f;
@@ -436,7 +440,7 @@ void sync_server(int socketfd)
 					int n = 0;
 					bzero(buffer,BUFFER_SIZE);
 					while(n < sizeof(struct file_info))
-						n += read(socketfd, buffer+n, 1);
+						n += SSL_read(ssl_sync, buffer+n, 1);
 					memcpy(&f, buffer, sizeof(struct file_info));
 
 				
@@ -452,7 +456,7 @@ void sync_server(int socketfd)
 
 			
 					//recebe arquivo
-					receive_file(fullpath, socketfd);
+					receive_file(fullpath, ssl_sync);
 
 					// atualiza na estrutura do cliente no servidor.
 					memcpy(&(connected_clients[cliindex].fileinfo[index]), &f, sizeof(file_info));
@@ -473,18 +477,18 @@ void sync_server(int socketfd)
 					// pede para o cliente mandar o arquivo
 					bzero(buffer,BUFFER_SIZE);
 					buffer[0] = DOWNLOAD;
-					write(socketfd, buffer, 1);
+					SSL_write(ssl_sync, buffer, 1);
 
 					bzero(buffer,BUFFER_SIZE);
 					memcpy(buffer, client_mirror.fileinfo[i].name, MAXNAME);
-					write(socketfd, buffer, MAXNAME);
+					SSL_write(ssl_sync, buffer, MAXNAME);
 
 					struct file_info f;
 					//fica esperando receber struct
 					int n = 0;
 					bzero(buffer,BUFFER_SIZE);
 					while(n < sizeof(struct file_info))
-						n += read(socketfd, buffer+n, 1);
+						n += SSL_read(ssl_sync, buffer+n, 1);
 					memcpy(&f, buffer, sizeof(struct file_info));
 
 		
@@ -499,7 +503,7 @@ void sync_server(int socketfd)
 					strcat(fullpath, f.extension);
 
 					//recebe arquivo
-					receive_file(fullpath, socketfd);
+					receive_file(fullpath, ssl_sync);
 			
 
 					//bota f na estrutura self
@@ -511,11 +515,11 @@ void sync_server(int socketfd)
 					// o arquivo é velho e deve ser deletado do servidor adequadamente.
 					bzero(buffer, BUFFER_SIZE);
 					buffer[0] = DELETE;
-					write(socketfd, buffer, 1);
+					SSL_write(ssl_sync, buffer, 1);
 
 					bzero(buffer,BUFFER_SIZE);
 					memcpy(buffer, &connected_clients[cliindex].fileinfo[i].name, MAXNAME);
-					write(socketfd, buffer, MAXNAME);
+					SSL_write(ssl_sync, buffer, MAXNAME);
 				}
 			}
         }
@@ -524,34 +528,11 @@ void sync_server(int socketfd)
 	//avança o estado de commit do cliente no servidor.
 	connected_clients[cliindex].current_commit += 1;
 
-
 	// avisa que acabou o seu sync.
 	bzero(buffer, BUFFER_SIZE);
 	buffer[0] = SYNC_END;
-	write(socketfd, buffer, 1);
+	SSL_write(ssl_sync, buffer, 1);
 }
-
-void create_SSL_method_contexts()
-{
-    // cria contextos para o SSL da thread principal do cliente
-    main_method = SSLv23_client_method();
-    main_context = SSL_CTX_new(main_method);
-    if(main_context == NULL)
-    {
-        ERR_print_errors_fp(stderr);
-        abort();
-    }
-    
-    // cria contextos para o SSL da thread de sync
-    sync_method = SSLv23_client_method();
-    sync_context = SSL_CTX_new(sync_method);
-    if(sync_context == NULL)
-    {
-        ERR_print_errors_fp(stderr);
-        abort();
-    }
-}
-
 
 int main(int argc, char *argv[])
 {
@@ -594,11 +575,11 @@ int main(int argc, char *argv[])
 	// inicialização das estruturas necessarias para o SSL
 	init_SSL();
 
-	SSL_METHOD *main_method;
+	const SSL_METHOD *main_method;
     SSL_CTX *main_context;
     SSL *ssl_main;
 
-	SSL_METHOD *sync_method;
+	const SSL_METHOD *sync_method;
     SSL_CTX *sync_context;
     SSL *ssl_sync;
 
@@ -619,12 +600,10 @@ int main(int argc, char *argv[])
     }
 
 	// load dos certificados do SSL para as threads main e sync
-	SSL_CTX_use_certificate_file(sync_context, "CertFile.pem", SSL_FILETYPE_PEM);
-	SSL_CTX_use_PrivateKey_file(sync_context, "KeyFile.pem", SSL_FILETYPE_PEM);
 	SSL_CTX_use_certificate_file(main_context, "CertFile.pem", SSL_FILETYPE_PEM);
 	SSL_CTX_use_PrivateKey_file(main_context, "KeyFile.pem", SSL_FILETYPE_PEM);
-
-	
+	SSL_CTX_use_certificate_file(sync_context, "CertFile.pem", SSL_FILETYPE_PEM);
+	SSL_CTX_use_PrivateKey_file(sync_context, "KeyFile.pem", SSL_FILETYPE_PEM);
 	
 	int PORT = atoi(argv[1]);
 	
@@ -661,7 +640,7 @@ int main(int argc, char *argv[])
 
 			// cliente me manda id
 			bzero(buffer, BUFFER_SIZE);
-			read(socket_client, buffer, MAXNAME);
+			SSL_read(ssl_main, buffer, MAXNAME);
 			memcpy(clientid, buffer, MAXNAME);
 
 
@@ -674,14 +653,14 @@ int main(int argc, char *argv[])
 				bzero(buffer, BUFFER_SIZE);
 				//sprintf(buffer, "%s", "A");
 				buffer[0] = 'A';		
-				write(socket_client, buffer, 1);
+				SSL_write(ssl_main, buffer, 1);
 				clients += 1;
 			}
 			else
 			{
 				bzero(buffer, BUFFER_SIZE);
 				buffer[0] = 'N';
-				write(socket_client, buffer, 1);
+				SSL_write(ssl_main, buffer, 1);
 		
 				close(socket_client);
 				break;
@@ -692,22 +671,17 @@ int main(int argc, char *argv[])
 			// envia quantos clientes estão conectados para o cliente saber em que +x porta deve conectar o sync
 			bzero(buffer, BUFFER_SIZE);
 			buffer[0] = clients;
-			write(socket_client, buffer, 1);
+			SSL_write(ssl_main, buffer, 1);
 			
-			int *new_sock;
-			new_sock = malloc(1);
-        	*new_sock = socket_client;
 			pthread_t client_thread;
-
-			pthread_create(&client_thread, NULL, run_client, (void*)new_sock);
-		
+			pthread_create(&client_thread, NULL, run_client, (void*)ssl_main);
 			pthread_detach(client_thread);
 
 			// fica esperando a segunda conexão do sync e quando recebe, cria outro socket/thread.
 			int socket_conn, socket_sync;
 			socklen_t sync_len;
 			struct sockaddr_in sync_addr;
-
+			
 			int PORT_SYNC = PORT+clients;
 	
 			if ((socket_conn = socket(AF_INET, SOCK_STREAM, 0)) == -1) 
@@ -726,11 +700,22 @@ int main(int argc, char *argv[])
 	
 			if( (socket_sync = accept(socket_conn, (struct sockaddr *) &sync_addr, &sync_len)) )
 			{
-				int *new_new_sock;
-				new_new_sock = malloc(1);
-			   	*new_new_sock = socket_sync;
-
 				//inicializa o SSL para a thread de sync
+				ssl_sync = SSL_new(sync_context);
+                SSL_set_fd(ssl_sync, socket_sync);
+                int ssl_err = SSL_accept(ssl_sync);
+                if(ssl_err <= 0)
+                {
+                    printf("[sync] Error initializing SSL\n");
+                    exit(1);
+			    }
+			    
+			    connection_info *ci = malloc(sizeof(connection_info));
+			   	ci->port = PORT_SYNC;
+			   	ci->socket_sync = socket_sync;
+			   	
+			   	ci->ssl_sync = malloc(sizeof(SSL));
+			   	ci->ssl_sync = ssl_sync;
 
 				// atualiza o devices do cliente com o socketfd usado pra sync
 
@@ -742,7 +727,7 @@ int main(int argc, char *argv[])
 					connected_clients[in].devices[1] = socket_sync;
  
 				pthread_t sync_thread;
-				pthread_create(&sync_thread, NULL, run_sync, (void*)new_new_sock);
+				pthread_create(&sync_thread, NULL, run_sync, (void*)ci);
 				pthread_detach(sync_thread);
 			}
 		}

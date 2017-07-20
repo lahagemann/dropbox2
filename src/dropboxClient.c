@@ -5,8 +5,8 @@
 
 client self;
 char home[256];
-SSL_METHOD *sync_method;
-SSL_METHOD *main_method;
+const SSL_METHOD *sync_method;
+const SSL_METHOD *main_method;
 SSL_CTX *sync_context;
 SSL_CTX *main_context;
 SSL *ssl_sync;
@@ -58,6 +58,7 @@ int authenticate_user(SSL *ssl, char *userid)
 	{
 		printf("Connected. :)\n");
 		return 1;
+	}
 	else
 	{
 		printf("Authentication failed. Disconnecting...\n");
@@ -407,8 +408,10 @@ int main(int argc, char *argv[])
 
 	// recebe quantos clientes estão conectados para saber em que +x porta deve conectar
 	bzero(buffer, BUFFER_SIZE);
-	read(socketfd, buffer, 1);
+	SSL_read(ssl_main, buffer, 1);
 	int clients = buffer[0];
+	
+	
 
 	// conecta um novo socket na porta +1 para fazer o sync apenas sem bloquear o programa de comandos.
 	sync_socketfd = connect_server(argv[2], atoi(argv[3])+clients);
@@ -430,6 +433,8 @@ int main(int argc, char *argv[])
 	pthread_t initial_sync_client;
 	pthread_create(&initial_sync_client, NULL, sync_client, (void*)ssl_sync);
 	pthread_detach(initial_sync_client);
+	
+	printf("buff %s\n", self.userid);
 
 	bzero(buffer, BUFFER_SIZE);
 	memcpy(buffer, self.userid, MAXNAME);
