@@ -39,30 +39,30 @@
 
 
 typedef struct file_info {
-	char name[MAXNAME];
-	char extension[MAXNAME];
-	struct tm last_modified;
-	int size;
-	int commit_modified;
+    char name[MAXNAME];
+    char extension[MAXNAME];
+    struct tm last_modified;
+    int size;
+    int commit_modified;
 } file_info;
 
 typedef struct client {
-	int devices[2];
-	char userid[MAXNAME];
-	struct file_info fileinfo[MAXFILES];
-	int logged_in;
-	int current_commit;
+    int devices[2];
+    char userid[MAXNAME];
+    struct file_info fileinfo[MAXFILES];
+    int logged_in;
+    int current_commit;
     pthread_mutex_t mutex;
-	pthread_cond_t cond;
+    pthread_cond_t cond;
 } client;
 
 typedef struct connection_info {
-	int port;
-	int socket_client;
-	int socket_sync; 
-	SSL *ssl_client;
-	SSL *ssl_sync;
-} connection_info;	
+    int port;
+    int socket_client;
+    int socket_sync; 
+    SSL *ssl_client;
+    SSL *ssl_sync;
+} connection_info;    
 
 void init_client(client *client, char *home, char *login);
 void update_client(client *client, char *home);
@@ -70,7 +70,7 @@ void update_self(client *client, char *home, SSL *ssl);
 int search_files(client *client, char filename[MAXNAME]);
 void insert_file_into_client_list(client *client, file_info fileinfo);
 void delete_file_from_client_list(client *client, char filename[MAXNAME]);
-int file_more_recent_than(file_info f1, file_info f2);
+//int file_more_recent_than(file_info f1, file_info f2);
 void receive_file(char* file_name, SSL *ssl);
 void send_file(char *file, SSL *ssl);
 void remove_file(char *filename);
