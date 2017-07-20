@@ -43,7 +43,7 @@ void init_client(client *client, char *home, char *login)
 	update_client(client, home);
 }
 
-void update_client(client *client, char *home, SSL *ssl)
+void update_client(client *client, char *home)
 {
 	//setup do nome do diretório em que ele precisa procurar.
 	int i = 0;
@@ -157,7 +157,7 @@ void update_client(client *client, char *home, SSL *ssl)
 
 
 
-void update_self(client *client, char *home)
+void update_self(client *client, char *home, SSL *ssl)
 {
 	//setup do nome do diretório em que ele precisa procurar.
 	int i = 0;
@@ -206,10 +206,11 @@ void update_self(client *client, char *home)
 					strcat(fullpath, ".");
 					strcat(fullpath, extension);
 
+					printf("START\n");
 				  	struct stat attrib;
 					struct tm Tfile;				  	
 					stat(fullpath, &attrib);
-					memcpy(&Tfile, localtime(&(attrib.st_mtime), sizeof(struct tm));
+					memcpy(&Tfile, localtime(&(attrib.st_mtime)), sizeof(struct tm));
 					
 					time_t before_time;
 					struct tm Tbefore;
@@ -222,9 +223,11 @@ void update_self(client *client, char *home)
 					SSL_write(ssl, buffer, 1);
 					struct tm Tserver;
 					bzero(buffer, BUFFER_SIZE);
+					int n=0;
 					while(n < sizeof(struct tm))
 						n += SSL_read(ssl, buffer+n, 1);
-					memcpy(&Tserver, buffer, sizeof(struct tm));
+					memcpy(&Tserver, buffer, sizeof(struct tm));	
+					printf("RECEIVE TIME\n");
 
 					time_t after_time;
 					struct tm Tafter;
@@ -232,14 +235,18 @@ void update_self(client *client, char *home)
 					memcpy(&Tafter, localtime(&after_time), sizeof(struct tm));
 					
 					//(T2 - T1)/2
-					struct tm Tclient;
-					memcpy(&Tclient, &(christian(Tafter, Tbefore, Tserver)), sizeof(struct tm));
+					struct tm Tclient, Tret;
+					christian(Tafter, Tbefore, Tserver, &Tret);
+					memcpy(&Tclient, &Tret, sizeof(struct tm));
 						
-					//tempo atual - tempo do arquivo 
-					memcpy(&Tfile, &(diff_time(Tafter, Tfile)), sizeof(struct tm));
+					//tempo atual - tempo do arquivo
+					struct tm dft;
+					diff_time(Tafter, Tfile, &dft);
+					memcpy(&Tfile, &dft, sizeof(struct tm));
 
 					//fi.last_modified = Tc - (tempo atual - tempo do arquivo)
-					memcpy(&fi.last_modified, &(diff_time(Tclient, Tfile)), sizeof(struct tm));
+					diff_time(Tclient, Tfile, &dft);
+					memcpy(&fi.last_modified, &dft, sizeof(struct tm));
 
 
 
@@ -492,30 +499,26 @@ void init_SSL()
 }
 
 
-struct tm christian(struct tm T0, struct tm T1, struct tm Ts){
+void christian(struct tm T0, struct tm T1, struct tm Ts, struct tm *Tc){
 	memcpy(&T0, &diff_time(T1, T0), sizeof(struct tm));
 	T0.tm_hour = T0.tm_hour/2;
 	T0.tm_min = T0.tm_min/2;
 	T0.tm_sec = T0.tm_sec/2;
 
-	struct tm Tc;
-	Tc.tm_hour = Ts.tm_hour + T0.tm_hour;
-	Tc.tm_min = Ts.tm_min + T0.tm_min;
-	Tc.tm_sec = Ts.tm_sec + T0.tm_sec;
-	mktime(&Tc);
-
-	return Tc;
+	//struct tm Tc;
+	Tc->tm_hour = Ts.tm_hour + T0.tm_hour;
+	Tc->tm_min = Ts.tm_min + T0.tm_min;
+	Tc->tm_sec = Ts.tm_sec + T0.tm_sec;
+	mktime(Tc);
 }
 
 
-struct tm diff_time(struct tm T1, struct tm T2){
-	struct tm Tret;
-	Tret.tm_hour = abs(T1.tm_hour - T2.tm_hour);
-	Tret.tm_min = abs(T1.tm_min - T2.tm_min);
-	Tret.tm_sec = abs(T1.tm_sec - T2.tm_sec);
-	mktime(&Tret);
-	
-	return Tret;
+void diff_time(struct tm T1, struct tm T2, struct tm *Tret){
+	//struct tm Tret;
+	Tret->tm_hour = abs(T1.tm_hour - T2.tm_hour);
+	Tret->tm_min = abs(T1.tm_min - T2.tm_min);
+	Tret->tm_sec = abs(T1.tm_sec - T2.tm_sec);
+	mktime(Tret);
 }
 
 int more_recent(struct tm T1, struct tm T2){

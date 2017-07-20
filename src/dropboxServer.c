@@ -342,6 +342,17 @@ void* run_sync(void *conn_info)
 						// deleta estrutura da lista de arquivos do cliente
 						delete_file_from_client_list(&(connected_clients[cliindex]), fname);
 					}
+					else if(command == REC_TIME)
+					{
+						printf("SERVER TIME\n");
+						bzero(buffer, BUFFER_TIME);
+						time_t server_time;
+						time(&server_time);
+						memcpy(&buffer, localtime(&server_time), sizeof(struct tm));
+						SSL_write(ssl_sync, buffer, sizeof(struct tm);
+						printf("SERVER SENT TIME\n");
+);
+					}
 					else
 					{
 						//pthread_mutex_unlock(&connected_clients[cliindex].mutex);

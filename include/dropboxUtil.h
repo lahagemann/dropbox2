@@ -41,7 +41,7 @@
 typedef struct file_info {
 	char name[MAXNAME];
 	char extension[MAXNAME];
-	char last_modified[MAXNAME];
+	struct tm last_modified;
 	int size;
 	int commit_modified;
 } file_info;
@@ -66,6 +66,7 @@ typedef struct connection_info {
 
 void init_client(client *client, char *home, char *login);
 void update_client(client *client, char *home);
+void update_self(client *client, char *home, SSL *ssl);
 int search_files(client *client, char filename[MAXNAME]);
 void insert_file_into_client_list(client *client, file_info fileinfo);
 void delete_file_from_client_list(client *client, char filename[MAXNAME]);
@@ -74,3 +75,7 @@ void receive_file(char* file_name, SSL *ssl);
 void send_file(char *file, SSL *ssl);
 void remove_file(char *filename);
 void init_SSL();
+
+void christian(struct tm T0, struct tm T1, struct tm Ts, struct tm *Tc);
+void diff_time(struct tm T1, struct tm T2, struct tm *Tret);
+int more_recent(struct tm T1, struct tm T2);
