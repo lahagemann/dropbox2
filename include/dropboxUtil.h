@@ -65,6 +65,7 @@ typedef struct connection_info {
 } connection_info;    
 
 void init_client(client *client, char *home, char *login);
+void init_self(client *client, char *home, char *login, SSL *ssl);
 void update_client(client *client, char *home);
 void update_self(client *client, char *home, SSL *ssl);
 int search_files(client *client, char filename[MAXNAME]);

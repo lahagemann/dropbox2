@@ -208,6 +208,16 @@ void* run_client(void *ssl)
                         list_files(&(connected_clients[client_index]), buffer);
                         SSL_write(ssl_main, buffer, BUFFER_SIZE);
                     }
+                case REC_TIME:
+                    {
+                        printf("SERVER TIME\n");
+                        bzero(buffer, BUFFER_TIME);
+                        time_t server_time;
+                        time(&server_time);
+                        memcpy(&buffer, localtime(&server_time), sizeof(struct tm));
+                        SSL_write(ssl_main, buffer, sizeof(struct tm);
+                        printf("SERVER SENT TIME\n");
+                    }
                     break;
                 default:
                     break;

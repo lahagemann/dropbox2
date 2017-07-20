@@ -83,7 +83,7 @@ void* sync_client(void *ssl)
         printf("syncing...\n");
         
         // AQUI ETAPA DO SYNC_SERVER!
-        update_self(&self, home);
+        update_self(&self, home, ssl_sync);
 
         // envia seu mirror pro servidor
         bzero(buffer, BUFFER_SIZE);
@@ -168,7 +168,7 @@ void* sync_client(void *ssl)
         struct client server_mirror;
         struct file_info *fi;
     
-        update_self(&self, home);
+        update_self(&self, home, ssl_sync);
     
         // envia para o servidor que ele vai começar o sync.
         bzero(buffer, BUFFER_SIZE);
@@ -438,6 +438,9 @@ int main(int argc, char *argv[])
     
     while(1) 
     {
+        // AQUI: não sei se isso funciona, mas tem que separar o update do init.
+        update_self(&self, home, ssl_main);
+        
         bzero(buffer, BUFFER_SIZE);
         fgets(buffer, BUFFER_SIZE, stdin);
 

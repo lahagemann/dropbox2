@@ -40,49 +40,7 @@ void init_client(client *client, char *home, char *login)
         return;
     }
 
-    update_client(client, home);
-}
-
-void init_self(client *client, char *home, char *login, SSL *ssl)
-{
-    //inicializa estrutura self do cliente
-    strcpy(client->userid, login);
-    
-    //printf("client login %s\n", client->userid);
-    //inicializa todos os nomes de arquivo como empty string, preparando para a função update client
-    int i;
-    for(i = 0; i < MAXFILES; i++)
-        strcpy(client->fileinfo[i].name, "\0");
-    
-    //verifica se o diretorio sync_dir existe na home do usuario. se nao existir, cria.
-    char sync_dir[256];
-    strcpy(sync_dir, home);
-    strcat(sync_dir, "/sync_dir_");
-    strcat(sync_dir, login);
-
-    //printf("syncdir: %s\n", sync_dir);
-
-    struct stat st;
-    if (stat(sync_dir, &st) != 0) {
-          mkdir(sync_dir, 0777);
-    }
-
-    client->logged_in = 1;
-    client->current_commit = 0;
-    client->devices[0] = 0;
-
-    if (pthread_mutex_init(&(client->mutex), NULL) != 0)
-    {
-        printf("\nMutex (queue) init failed\n");
-        return;
-    }
-    if (pthread_cond_init(&(client->cond), NULL) != 0)
-    {
-        printf("\nMutex (queue) init failed\n");
-        return;
-    }
-
-    update_self(client, home, ssl);
+    //update_client(client, home);
 }
 
 void update_client(client *client, char *home)
