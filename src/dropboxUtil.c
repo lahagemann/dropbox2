@@ -43,7 +43,7 @@ void init_client(client *client, char *home, char *login)
 	update_client(client, home);
 }
 
-void update_client(client *client, char *home)
+void update_client(client *client, char *home, SSL *ssl)
 {
 	//setup do nome do diretório em que ele precisa procurar.
 	int i = 0;
@@ -151,6 +151,150 @@ void update_client(client *client, char *home)
 	}
 
 }
+
+
+
+
+
+
+void update_self(client *client, char *home)
+{
+	//setup do nome do diretório em que ele precisa procurar.
+	int i = 0;
+
+	char sync_dir[256];
+	strcpy(sync_dir,home);
+	strcat(sync_dir,"/sync_dir_");
+	strcat(sync_dir,client->userid);
+
+	struct dirent *dir;	
+	DIR *d;
+	
+	// lista todos os arquivos no diretorio sync_dir do usuario, colocando-os na estrutura self do cliente
+	d = opendir(sync_dir);
+	if (d)
+	{
+	  while ((dir = readdir(d)) != NULL)
+	  {
+			struct file_info fi;
+			
+			if(strcmp(dir->d_name, "..") == 0 || strcmp(dir->d_name, ".") == 0);
+			else
+			{
+				// d_name é o nome do arquivo sem o resto do path. ta de boasssss
+				char copy[256];
+				strcpy(copy, dir->d_name);
+				char *name = strtok(copy, ".");
+				char *extension = strtok(NULL, ".");
+		
+			  	strcpy(fi.name, name);
+			  	strcpy(fi.extension, extension);
+
+
+				char *til = strchr(fi.extension, '~');
+				int empty_name = strcmp(fi.name, "");
+				if(til || empty_name == 0);
+				else
+				{
+
+				  	// pegar ultima data de modificação do arquivo
+					//STAT É CHAMADO COM FULL PATH, TEM QUE CONCATENAR
+					char fullpath[256];
+					strcpy(fullpath, sync_dir);
+					strcat(fullpath, "/");
+					strcat(fullpath, name);
+					strcat(fullpath, ".");
+					strcat(fullpath, extension);
+
+				  	struct stat attrib;
+					struct tm Tfile;				  	
+					stat(fullpath, &attrib);
+					memcpy(&Tfile, localtime(&(attrib.st_mtime), sizeof(struct tm));
+					
+					time_t before_time;
+					struct tm Tbefore;
+					time(&before_time);
+					memcpy(&Tbefore, localtime(&before_time), sizeof(struct tm));
+
+					//server time
+					char buffer[BUFFER_SIZE];					
+					buffer[0] = REC_TIME;
+					SSL_write(ssl, buffer, 1);
+					struct tm Tserver;
+					bzero(buffer, BUFFER_SIZE);
+					while(n < sizeof(struct tm))
+						n += SSL_read(ssl, buffer+n, 1);
+					memcpy(&Tserver, buffer, sizeof(struct tm));
+
+					time_t after_time;
+					struct tm Tafter;
+					time(&after_time);
+					memcpy(&Tafter, localtime(&after_time), sizeof(struct tm));
+					
+					//(T2 - T1)/2
+					struct tm Tclient;
+					memcpy(&Tclient, &(christian(Tafter, Tbefore, Tserver)), sizeof(struct tm));
+						
+					//tempo atual - tempo do arquivo 
+					memcpy(&Tfile, &(diff_time(Tafter, Tfile)), sizeof(struct tm));
+
+					//fi.last_modified = Tc - (tempo atual - tempo do arquivo)
+					memcpy(&fi.last_modified, &(diff_time(Tclient, Tfile)), sizeof(struct tm));
+
+
+
+		            		
+				  	fi.size = (int)attrib.st_size;
+					fi.commit_modified = client->current_commit;
+
+					int index = search_files(client, name);
+					if(index >= 0) // arquivo já existe na estrutura
+					{
+						file_info f;
+						memcpy(&f, &(client->fileinfo[index]), sizeof(file_info));
+				
+						// se a data de modificação do arquivo que eu to lendo agora for mais recente que o que ja tava na estrutura self, sobrescrever.
+						if(more_recent(fi.last_modified, f)) 
+						{
+							memcpy(&client->fileinfo[index], &fi, sizeof(file_info));
+						}
+					}
+					else
+					{
+						//arquivo não está na estrutura, adicionar.
+						insert_file_into_client_list(client, fi);
+					}
+				}
+			}
+		  	i++;
+	  }
+	  closedir(d);
+	}
+
+	// loop de deleção de elementos da estrutura fileinfo que não existem mais no diretório
+	for(i = 0; i < MAXFILES; i++)
+	{
+		if(strcmp(client->fileinfo[i].name, "\0") == 0)
+			break;
+		else
+		{
+			char file[256];
+			strcpy(file, sync_dir);
+			strcat(file, "/");
+			strcat(file, client->fileinfo[i].name);
+			strcat(file, ".");
+			strcat(file, client->fileinfo[i].extension);
+
+			//stat: On success, zero is returned.  On error, -1 is returned, and errno is set appropriately.
+			struct stat st;
+			if (stat(file, &st) != 0) {
+			  delete_file_from_client_list(client, client->fileinfo[i].name);
+			}
+		}
+	}
+
+}
+
 
 int search_files(client *client, char filename[MAXNAME])
 {
@@ -345,6 +489,43 @@ void init_SSL()
     SSL_load_error_strings();
     SSL_library_init();
     OpenSSL_add_all_algorithms();
+}
+
+
+struct tm christian(struct tm T0, struct tm T1, struct tm Ts){
+	memcpy(&T0, &diff_time(T1, T0), sizeof(struct tm));
+	T0.tm_hour = T0.tm_hour/2;
+	T0.tm_min = T0.tm_min/2;
+	T0.tm_sec = T0.tm_sec/2;
+
+	struct tm Tc;
+	Tc.tm_hour = Ts.tm_hour + T0.tm_hour;
+	Tc.tm_min = Ts.tm_min + T0.tm_min;
+	Tc.tm_sec = Ts.tm_sec + T0.tm_sec;
+	mktime(&Tc);
+
+	return Tc;
+}
+
+
+struct tm diff_time(struct tm T1, struct tm T2){
+	struct tm Tret;
+	Tret.tm_hour = abs(T1.tm_hour - T2.tm_hour);
+	Tret.tm_min = abs(T1.tm_min - T2.tm_min);
+	Tret.tm_sec = abs(T1.tm_sec - T2.tm_sec);
+	mktime(&Tret);
+	
+	return Tret;
+}
+
+int more_recent(struct tm T1, struct tm T2){
+	if(T1.tm_hour > T2.tm_hour)
+		return 1;
+	else if(T1.tm_hour < T2.tm_hour)
+		return 0;
+	else if(T1.tm_min > T2.tm_min)
+		return 1;
+	else return 0;
 }
 
 

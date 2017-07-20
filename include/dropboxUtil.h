@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <math.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -27,6 +28,7 @@
 #define SYNC 's'
 #define SYNC_END 'q'
 #define UPLOAD 'u'
+#define REC_TIME 't'
 
 #define FILE_NOT_FOUND 'k'
 #define FILE_FOUND 'y'
