@@ -425,24 +425,36 @@ void sync_server(connection_info ci)
     client *cli = malloc(sizeof(client));
     int cliindex = return_client(client_mirror.userid, cli);
     
+    printf("client: %s\n", connected_clients[cliindex].userid);
+    printf("%d\n", socketfd);
+    
     //tem que fazer cond wait com relação ao device que está conectado.
     if(socketfd == connected_clients[cliindex].devices[0])
     {
+        printf("device 1, mutexes\n");
         pthread_mutex_lock(&connected_clients[cliindex].mutex);
+        printf("device 1, after lock\n");
+        printf("state: %d\n", state);
         while(state != STATE_DEV1)
             pthread_cond_wait(&connected_clients[cliindex].cond, &connected_clients[cliindex].mutex);
         pthread_mutex_unlock(&connected_clients[cliindex].mutex);
+        
+        printf("device 1 unlocking\n");
     }
     else
     {
-         pthread_mutex_lock(&connected_clients[cliindex].mutex);
+        printf("device 2, mutexes\n");
+        pthread_mutex_lock(&connected_clients[cliindex].mutex);
+        printf("device 2, after lock\n");
         while(state != STATE_DEV2)
             pthread_cond_wait(&connected_clients[cliindex].cond, &connected_clients[cliindex].mutex);
         pthread_mutex_unlock(&connected_clients[cliindex].mutex);
+        
+        printf("device 2 unlocking\n");
     }
 
     update_client(&(connected_clients[cliindex]), home);
-
+    printf("updateei client\n");
 
       // pra cada arquivo do cliente:
       int i;
