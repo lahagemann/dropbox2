@@ -29,6 +29,7 @@
 #define SYNC_END 'q'
 #define UPLOAD 'u'
 #define REC_TIME 't'
+#define END_UPDATE 'w'
 
 #define FILE_NOT_FOUND 'k'
 #define FILE_FOUND 'y'

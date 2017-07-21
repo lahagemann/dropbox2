@@ -247,7 +247,23 @@ void* run_sync(void *conn_info)
         // aí executa aqui o sync_server.
         sync_server(ci);
 
-        // aí aqui executa o loop de aceite do sync_client
+        // cliente está executando update_self. server ouve e envia tempo quando necessário.
+        bzero(buffer, BUFFER_SIZE);
+        SSL_read(ssl_sync, buffer, 1);
+        while(buffer[0] != END_UPDATE)
+        {
+            if(buffer[0] == REC_TIME)
+            {
+                bzero(buffer, BUFFER_SIZE);
+                time_t server_time;
+                time(&server_time);
+                memcpy(&buffer, localtime(&server_time), sizeof(struct tm));
+                SSL_write(ssl_sync, buffer, sizeof(struct tm));
+            }
+            bzero(buffer, BUFFER_SIZE);
+            SSL_read(ssl_sync, buffer, 1);
+        }
+        printf("ended update self\n");
 
 
         bzero(buffer, BUFFER_SIZE);
@@ -352,16 +368,6 @@ void* run_sync(void *conn_info)
                         // deleta estrutura da lista de arquivos do cliente
                         delete_file_from_client_list(&(connected_clients[cliindex]), fname);
                     }
-                    else if(command == REC_TIME)
-                    {
-                        printf("SERVER TIME\n");
-                        bzero(buffer, BUFFER_SIZE);
-                        time_t server_time;
-                        time(&server_time);
-                        memcpy(&buffer, localtime(&server_time), sizeof(struct tm));
-                        SSL_write(ssl_sync, buffer, sizeof(struct tm));
-                        printf("SERVER SENT TIME\n");
-                    }
                     else
                     {
                         //pthread_mutex_unlock(&connected_clients[cliindex].mutex);
@@ -389,6 +395,23 @@ void sync_server(connection_info ci)
     
     SSL *ssl_sync = ci.ssl_sync;
     int socketfd = ci.socket_sync;
+    
+    bzero(buffer, BUFFER_SIZE);
+    SSL_read(ssl_sync, buffer, 1);
+    while(buffer[0] != END_UPDATE)
+    {
+        if(buffer[0] == REC_TIME)
+        {
+            bzero(buffer, BUFFER_SIZE);
+            time_t server_time;
+            time(&server_time);
+            memcpy(&buffer, localtime(&server_time), sizeof(struct tm));
+            SSL_write(ssl_sync, buffer, sizeof(struct tm));
+        }
+        bzero(buffer, BUFFER_SIZE);
+        SSL_read(ssl_sync, buffer, 1);
+    }
+    printf("ended update self\n");
 
     //server fica esperando o cliente enviar seu mirror
     // AQUI DÁ PROBLEMA

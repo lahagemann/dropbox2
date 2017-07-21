@@ -83,9 +83,9 @@ void* sync_client(void *ssl)
         printf("syncing...\n");
         
         // AQUI ETAPA DO SYNC_SERVER!
-	printf("entrando update self 1\n");
         update_self(&self, home, ssl_sync);
-	printf("saindo update self 1\n");
+        
+        printf("ended update self\n");
 
         // envia seu mirror pro servidor
         bzero(buffer, BUFFER_SIZE);

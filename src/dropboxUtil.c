@@ -151,15 +151,11 @@ void update_client(client *client, char *home)
 
 }
 
-
-
-
-
-
 void update_self(client *client, char *home, SSL *ssl)
 {
     //setup do nome do diretório em que ele precisa procurar.
     int i = 0;
+    char buffer[BUFFER_SIZE];         
 
     char sync_dir[256];
     strcpy(sync_dir,home);
@@ -206,7 +202,7 @@ void update_self(client *client, char *home, SSL *ssl)
                     strcat(fullpath, extension);
 
                     printf("START\n");
-                      struct stat attrib;
+                    struct stat attrib;
                     struct tm Tfile;                      
                     stat(fullpath, &attrib);
                     memcpy(&Tfile, localtime(&(attrib.st_mtime)), sizeof(struct tm));
@@ -217,7 +213,7 @@ void update_self(client *client, char *home, SSL *ssl)
                     memcpy(&Tbefore, localtime(&before_time), sizeof(struct tm));
 
                     //server time
-                    char buffer[BUFFER_SIZE];                    
+                    bzero(buffer, BUFFER_SIZE);
                     buffer[0] = REC_TIME;
                     SSL_write(ssl, buffer, 1);
                     struct tm Tserver;
@@ -225,7 +221,9 @@ void update_self(client *client, char *home, SSL *ssl)
                     int n=0;
                     while(n < sizeof(struct tm))
                         n += SSL_read(ssl, buffer+n, 1);
-                    memcpy(&Tserver, buffer, sizeof(struct tm));    
+                    memcpy(&Tserver, buffer, sizeof(struct tm));
+                    
+                    printf("received time = %d %d %d\n", Tserver.tm_hour, Tserver.tm_min, Tserver.tm_sec);    
                     printf("RECEIVE TIME\n");
 
                     time_t after_time;
@@ -250,7 +248,7 @@ void update_self(client *client, char *home, SSL *ssl)
 
 
                             
-                      fi.size = (int)attrib.st_size;
+                    fi.size = (int)attrib.st_size;
                     fi.commit_modified = client->current_commit;
 
                     int index = search_files(client, name);
@@ -298,6 +296,18 @@ void update_self(client *client, char *home, SSL *ssl)
             }
         }
     }
+    
+    /*for(i = 0; i < MAXFILES; i++)
+    {
+        if(strcmp(client->fileinfo[i].name, "\0") == 0)
+            break;
+        else
+            printf("file: %s\n", client->fileinfo[i].name);
+    }*/
+    
+    bzero(buffer, BUFFER_SIZE);
+    buffer[0] = END_UPDATE;
+    SSL_write(ssl, buffer, 1);
 
 }
 
