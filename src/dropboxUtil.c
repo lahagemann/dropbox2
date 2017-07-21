@@ -28,6 +28,7 @@ void init_client(client *client, char *home, char *login)
     client->logged_in = 1;
     client->current_commit = 0;
     client->devices[0] = 0;
+    client->devices[1] = 0;
 
     if (pthread_mutex_init(&(client->mutex), NULL) != 0)
     {

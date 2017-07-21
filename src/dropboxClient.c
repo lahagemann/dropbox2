@@ -85,8 +85,6 @@ void* sync_client(void *ssl)
         // AQUI ETAPA DO SYNC_SERVER!
         update_self(&self, home, ssl_sync);
         
-        printf("ended update self\n");
-
         // envia seu mirror pro servidor
         bzero(buffer, BUFFER_SIZE);
         memcpy(buffer, &self, sizeof(struct client));
@@ -94,17 +92,14 @@ void* sync_client(void *ssl)
 
         while(1)
         {
-			printf("update 1 while\n");
             char command;
             char fname[MAXNAME];
 
             bzero(buffer,BUFFER_SIZE);
             SSL_read(ssl_sync, buffer, 1);
             memcpy(&command, buffer, 1);
-			printf("command got\n");
             if(command == DOWNLOAD)
             {
-				printf("command download\n");
                 // recebe nome do arquivo
                 bzero(buffer,BUFFER_SIZE);
                 SSL_read(ssl_sync, buffer, MAXNAME);
@@ -136,7 +131,6 @@ void* sync_client(void *ssl)
             }
             else if(command == DELETE)
             {
-				printf("command delete\n");
                 // recebe nome do arquivo
                 bzero(buffer,BUFFER_SIZE);
                 SSL_read(ssl_sync, buffer, MAXNAME);
@@ -167,15 +161,12 @@ void* sync_client(void *ssl)
             else
                 break;
         }
-		printf("saiu update 1 while\n");
         // AGORA FAZ SYNC_CLIENT
 
         struct client server_mirror;
         struct file_info *fi;
     
-		printf("entrando update self 2\n");
         update_self(&self, home, ssl_sync);
-		printf("saindo update self 2\n");
     
         // envia para o servidor que ele vai começar o sync.
         bzero(buffer, BUFFER_SIZE);
@@ -446,9 +437,7 @@ int main(int argc, char *argv[])
     while(1) 
     {
         // AQUI: não sei se isso funciona, mas tem que separar o update do init.
-	printf("entrando update self 3\n");
         update_self(&self, home, ssl_main);
-	printf("saindo update self 3\n");
         
         bzero(buffer, BUFFER_SIZE);
         fgets(buffer, BUFFER_SIZE, stdin);
