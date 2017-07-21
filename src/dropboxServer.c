@@ -211,11 +211,11 @@ void* run_client(void *ssl)
                 case REC_TIME:
                     {
                         printf("SERVER TIME\n");
-                        bzero(buffer, BUFFER_TIME);
+                        bzero(buffer, BUFFER_SIZE);
                         time_t server_time;
                         time(&server_time);
                         memcpy(&buffer, localtime(&server_time), sizeof(struct tm));
-                        SSL_write(ssl_main, buffer, sizeof(struct tm);
+                        SSL_write(ssl_main, buffer, sizeof(struct tm));
                         printf("SERVER SENT TIME\n");
                     }
                     break;
@@ -355,13 +355,12 @@ void* run_sync(void *conn_info)
                     else if(command == REC_TIME)
                     {
                         printf("SERVER TIME\n");
-                        bzero(buffer, BUFFER_TIME);
+                        bzero(buffer, BUFFER_SIZE);
                         time_t server_time;
                         time(&server_time);
                         memcpy(&buffer, localtime(&server_time), sizeof(struct tm));
-                        SSL_write(ssl_sync, buffer, sizeof(struct tm);
+                        SSL_write(ssl_sync, buffer, sizeof(struct tm));
                         printf("SERVER SENT TIME\n");
-);
                     }
                     else
                     {
