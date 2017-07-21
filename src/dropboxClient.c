@@ -83,7 +83,9 @@ void* sync_client(void *ssl)
         printf("syncing...\n");
         
         // AQUI ETAPA DO SYNC_SERVER!
+	printf("entrando update self 1\n");
         update_self(&self, home, ssl_sync);
+	printf("saindo update self 1\n");
 
         // envia seu mirror pro servidor
         bzero(buffer, BUFFER_SIZE);
@@ -92,15 +94,17 @@ void* sync_client(void *ssl)
 
         while(1)
         {
+			printf("update 1 while\n");
             char command;
             char fname[MAXNAME];
 
             bzero(buffer,BUFFER_SIZE);
             SSL_read(ssl_sync, buffer, 1);
             memcpy(&command, buffer, 1);
-
+			printf("command got\n");
             if(command == DOWNLOAD)
             {
+				printf("command download\n");
                 // recebe nome do arquivo
                 bzero(buffer,BUFFER_SIZE);
                 SSL_read(ssl_sync, buffer, MAXNAME);
@@ -132,6 +136,7 @@ void* sync_client(void *ssl)
             }
             else if(command == DELETE)
             {
+				printf("command delete\n");
                 // recebe nome do arquivo
                 bzero(buffer,BUFFER_SIZE);
                 SSL_read(ssl_sync, buffer, MAXNAME);
@@ -162,13 +167,15 @@ void* sync_client(void *ssl)
             else
                 break;
         }
-
+		printf("saiu update 1 while\n");
         // AGORA FAZ SYNC_CLIENT
 
         struct client server_mirror;
         struct file_info *fi;
     
+		printf("entrando update self 2\n");
         update_self(&self, home, ssl_sync);
+		printf("saindo update self 2\n");
     
         // envia para o servidor que ele vai começar o sync.
         bzero(buffer, BUFFER_SIZE);
@@ -381,8 +388,8 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    //strcpy(home,"/home/"); //home
-    strcpy(home,"/home/grad/");    //ufrgs
+    strcpy(home,"/home/"); //home
+    //strcpy(home,"/home/grad/");    //ufrgs
     strcat(home, getlogin());
     
     init_client(&self, home, argv[1]);
@@ -439,7 +446,9 @@ int main(int argc, char *argv[])
     while(1) 
     {
         // AQUI: não sei se isso funciona, mas tem que separar o update do init.
+	printf("entrando update self 3\n");
         update_self(&self, home, ssl_main);
+	printf("saindo update self 3\n");
         
         bzero(buffer, BUFFER_SIZE);
         fgets(buffer, BUFFER_SIZE, stdin);
@@ -522,8 +531,8 @@ int main(int argc, char *argv[])
             {
                 // pega o diretório Downloads do usuário e baixa para lá.
                 char user_downloads_dir[256];
-                //strcpy(user_downloads_dir, "/home/");
-                strcpy(user_downloads_dir, "/home/grad/");
+                strcpy(user_downloads_dir, "/home/");
+                //strcpy(user_downloads_dir, "/home/grad/");
                 strcat(user_downloads_dir, getlogin());
                 strcat(user_downloads_dir, "/Downloads/");
                 strcat(user_downloads_dir, filepath);            

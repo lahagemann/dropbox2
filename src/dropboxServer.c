@@ -556,8 +556,8 @@ int main(int argc, char *argv[])
     int i;
     char buffer[BUFFER_SIZE];
 
-    //strcpy(home,"/home/");    //home
-    strcpy(home,"/home/grad/");    //ufrgs
+    strcpy(home,"/home/");    //home
+    //strcpy(home,"/home/grad/");    //ufrgs
     strcat(home, getlogin());
     strcat(home, "/server");
 

@@ -168,7 +168,7 @@ void update_self(client *client, char *home, SSL *ssl)
 
     struct dirent *dir;    
     DIR *d;
-    
+    printf("SELF UPDATE\n");
     // lista todos os arquivos no diretorio sync_dir do usuario, colocando-os na estrutura self do cliente
     d = opendir(sync_dir);
     if (d)
