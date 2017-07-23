@@ -1,4 +1,6 @@
 #include "../include/dropboxUtil.h"
+#include <netdb.h> 
+
 
 char path[512];
 const SSL_METHOD *backup_method;
