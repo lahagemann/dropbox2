@@ -1,6 +1,31 @@
 #include "../include/dropboxUtil.h"
 
 char path[512];
+const SSL_METHOD *backup_method;
+SSL_CTX *backup_context;
+SSL *ssl_backup;
+
+void add_SSL_to_backup_socket(int socketfd)
+{
+    ssl_backup = SSL_new(backup_context);
+    SSL_set_fd(ssl_backup, socketfd);
+    if(SSL_connect(ssl_backup) == -1)
+        ERR_print_errors_fp(stderr);
+    else
+    {
+        X509 *certificate;
+        char *line;
+        certificate = SSL_get_peer_certificate(ssl_backup);
+        if(certificate != NULL) 
+        {
+            line = X509_NAME_oneline(X509_get_subject_name(certificate),0,0);
+            printf("Client: %s\n", line);
+            free(line);
+            line = X509_NAME_oneline(X509_get_issuer_name(certificate),0,0);
+            printf("Certificate issuer: %s\n", line);
+        }
+    }
+}
 
 int main()
 {
@@ -17,7 +42,15 @@ int main()
     //strcpy(home,"/home/grad/backup/"); //ufrgs
 
     init_SSL();
-    create_SSL_method_contexts();
+    
+    // cria contextos para o SSL da thread principal do backup
+    backup_method = SSLv23_client_method();
+    backup_context = SSL_CTX_new(backup_method);
+    if(backup_context == NULL)
+    {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
     
     // conecta backup com o servidor
     int socketfd;
@@ -49,18 +82,10 @@ int main()
 
     
     // adiciona SSL ao socket conectado.
-    add_SSL_to_main_socket(socketfd);
+    add_SSL_to_backup_socket(socketfd);
     
-    // autentica usuário conectado
-    int user_valid = authenticate_user(ssl_main, self.userid);
+    // main loop do backup
     
-    if(!user_valid)
-    {
-        SSL_shutdown(ssl_sync);
-        SSL_free(ssl_sync);
-        close(socketfd);
-        exit(1);
-    }
 
 	return 0;
 }
