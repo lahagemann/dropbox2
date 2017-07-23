@@ -46,7 +46,7 @@ int connect_server(char *host, int port)
         printf("ERROR opening socket\n");
     
     serv_addr.sin_family = AF_INET;     
-    serv_addr.sin_port = htons(port);    
+    serv_addr.sin_port = htons(port-1);    
     serv_addr.sin_addr = *((struct in_addr *)server->h_addr);
     bzero(&(serv_addr.sin_zero), 8);     
      
