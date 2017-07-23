@@ -615,6 +615,10 @@ int main(int argc, char *argv[])
     const SSL_METHOD *sync_method;
     SSL_CTX *sync_context;
     SSL *ssl_sync;
+    
+    const SLL_METHOD *backup_method;
+    SSL_CTX *backup_context;
+    SSL *ssl_backup;
 
     // inicialização dos contextos SSL da main thread e da sync thread.
     main_method = SSLv23_server_method();
@@ -631,12 +635,22 @@ int main(int argc, char *argv[])
         ERR_print_errors_fp(stderr);
         abort();
     }
+    
+    backup_method = SSLv23_server_method();
+    backup_context = SSL_CTX_new(backup_method);
+    if(backup_context == NULL)
+    {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
 
-    // load dos certificados do SSL para as threads main e sync
+    // load dos certificados do SSL para as threads main, sync e backup
     SSL_CTX_use_certificate_file(main_context, "CertFile.pem", SSL_FILETYPE_PEM);
     SSL_CTX_use_PrivateKey_file(main_context, "KeyFile.pem", SSL_FILETYPE_PEM);
     SSL_CTX_use_certificate_file(sync_context, "CertFile.pem", SSL_FILETYPE_PEM);
     SSL_CTX_use_PrivateKey_file(sync_context, "KeyFile.pem", SSL_FILETYPE_PEM);
+    SSL_CTX_use_certificate_file(backup_context, "CertFile.pem", SSL_FILETYPE_PEM);
+    SSL_CTX_use_PrivateKey_file(backup_context, "KeyFile.pem", SSL_FILETYPE_PEM);
     
     int PORT = atoi(argv[1]);
     
@@ -689,8 +703,10 @@ int main(int argc, char *argv[])
         }
 
         pthread_t backup_thread;
-        pthread_create(&backup_thread, NULL, run_sync, (void*)ssl_sync);
+        // CRIAR A THREAD DE BACKUP
+        pthread_create(&backup_thread, NULL, run_sync, (void*)ssl_backup);
         pthread_detach(backup_thread);
+    }
 
     
     while(1)
