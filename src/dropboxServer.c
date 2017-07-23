@@ -653,6 +653,45 @@ int main(int argc, char *argv[])
     
     listen(socket_connection, MAX_CONNECTIONS);
     client_len = sizeof(struct sockaddr_in);
+
+	
+	//socket backup
+	int socket_backconn, socket_backup;
+    socklen_t backup_len;
+    struct sockaddr_in backup_addr;
+    
+    int PORT_BACKUP = PORT-1;
+
+    if ((socket_backconn = socket(AF_INET, SOCK_STREAM, 0)) == -1) 
+        printf("ERROR opening backup conn socket");
+
+    backup_addr.sin_family = AF_INET;
+    backup_addr.sin_port = htons(PORT_BACKUP);
+    backup_addr.sin_addr.s_addr = INADDR_ANY;
+    bzero(&(backup_addr.sin_zero), 8);     
+
+    if (bind(socket_backconn, (struct sockaddr *) &backup_addr, sizeof(backup_addr)) < 0) 
+        printf("ERROR on binding backup");
+
+    listen(socket_backconn, 1);
+    backup_len = sizeof(struct sockaddr_in);
+
+    if( (socket_backup = accept(socket_backconn, (struct sockaddr *) &backup_addr, &backup_len)) )
+    {
+        //inicializa o SSL para a thread de sync
+        ssl_sync = SSL_new(backup_context);
+        SSL_set_fd(ssl_backup, socket_backup);
+        int ssl_err = SSL_accept(ssl_backup);
+        if(ssl_err <= 0)
+        {
+            printf("[sync] Error initializing SSL\n");
+            exit(1);
+        }
+
+        pthread_t backup_thread;
+        pthread_create(&backup_thread, NULL, run_sync, (void*)ssl_sync);
+        pthread_detach(backup_thread);
+
     
     while(1)
     {
