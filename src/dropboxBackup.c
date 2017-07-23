@@ -69,12 +69,12 @@ int main(int argc, char *argv[])
     // cria a pasta do backup se ela não existir.
 	strcpy(home,"/home/"); //home
 	//strcpy(home,"/home/grad/"); //ufrgs
-	strcat(home, getlogin);
+	strcat(home, getlogin());
 	strcat(home, "/backup");
 	
     struct stat st;
-    if (stat(sync_dir, &st) != 0) {
-          mkdir(sync_dir, 0777);
+    if (stat(home, &st) != 0) {
+          mkdir(home, 0777);
     }
 
     init_SSL();
@@ -94,7 +94,6 @@ int main(int argc, char *argv[])
     // adiciona SSL ao socket conectado.
     add_SSL_to_backup_socket(socketfd);
     
-    char buffer[BUFFER_SIZE];
     
     // main loop do backup
     while(1)
@@ -110,7 +109,8 @@ int main(int argc, char *argv[])
         SSL_read(ssl_backup, buffer, 1);
         int connected_clients = buffer[0];
         
-        for(int i = 0; i < connected_clients; i++)
+		int i = 0;
+        for(i; i < connected_clients; i++)
         {
             char clientid[MAXNAME];
             // server envia nome do cliente para backup criar a pasta
