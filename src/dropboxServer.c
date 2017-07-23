@@ -797,7 +797,7 @@ int main(int argc, char *argv[])
 
         pthread_t backup_thread;
         // CRIAR A THREAD DE BACKUP
-        pthread_create(&backup_thread, NULL, run_sync, (void*)ssl_backup);
+        pthread_create(&backup_thread, NULL, run_backup, (void*)ssl_backup);
         pthread_detach(backup_thread);
     }
 
