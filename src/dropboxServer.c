@@ -135,7 +135,7 @@ void* run_backup(void *ssl)
     
     while(1)
     {
-        bzero(buffer, BUFFER_SIZE;
+        bzero(buffer, BUFFER_SIZE);
         SSL_read(ssl_backup, buffer, 1);
         
         if(buffer[0] == BACKUP)
