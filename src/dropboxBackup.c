@@ -2,7 +2,7 @@
 #include <netdb.h> 
 
 
-char path[512];
+char home[512];
 const SSL_METHOD *backup_method;
 SSL_CTX *backup_context;
 SSL *ssl_backup;
@@ -66,8 +66,16 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-	strcpy(path,"/home/backup/"); //home
-    //strcpy(home,"/home/grad/backup/"); //ufrgs
+    // cria a pasta do backup se ela não existir.
+	strcpy(home,"/home/"); //home
+	//strcpy(home,"/home/grad/"); //ufrgs
+	strcat(home, getlogin);
+	strcat(home, "/backup");
+	
+    struct stat st;
+    if (stat(sync_dir, &st) != 0) {
+          mkdir(sync_dir, 0777);
+    }
 
     init_SSL();
     
@@ -86,7 +94,81 @@ int main(int argc, char *argv[])
     // adiciona SSL ao socket conectado.
     add_SSL_to_backup_socket(socketfd);
     
+    char buffer[BUFFER_SIZE];
+    
     // main loop do backup
+    while(1)
+    {
+        sleep(30);
+        
+        bzero(buffer, BUFFER_SIZE);
+        buffer[0] = BACKUP;
+        SSL_write(ssl_backup, buffer, 1);
+        
+        // server informa quantos clientes estão conectados no momento
+        bzero(buffer, BUFFER_SIZE);
+        SSL_read(ssl_backup, buffer, 1);
+        int connected_clients = buffer[0];
+        
+        for(int i = 0; i < connected_clients; i++)
+        {
+            char clientid[MAXNAME];
+            // server envia nome do cliente para backup criar a pasta
+            bzero(buffer, BUFFER_SIZE);
+            SSL_read(ssl_backup, buffer, MAXNAME);
+            strcpy(clientid, buffer);
+            
+            //cria a pasta
+            char sync_dir[256];
+            strcpy(sync_dir, home);
+            strcat(sync_dir, "/sync_dir_");
+            strcat(sync_dir, clientid);
+            
+            struct stat s;
+            if (stat(sync_dir, &s) != 0) {
+                  mkdir(sync_dir, 0777);
+            }
+            
+            // server fica enviando os arquivos de cada cliente
+            while(1)
+            {
+                bzero(buffer, BUFFER_SIZE);
+                SSL_read(ssl_backup, buffer, 1);
+            
+                if(buffer[0] == DOWNLOAD)
+                {
+                    char file[MAXNAME];
+                    char extension[MAXNAME];
+                    
+                    // server envia o nome do arquivo
+                    bzero(buffer,BUFFER_SIZE);
+                    SSL_read(ssl_backup, buffer, MAXNAME);
+                    strcpy(file, buffer);
+                    
+                    // server envia a extensão do arquivo
+                    bzero(buffer,BUFFER_SIZE);
+                    SSL_read(ssl_backup, buffer, MAXNAME);
+                    strcpy(extension, buffer);
+                
+                    // receive file funciona com full path
+                    char fullpath[256];
+                    strcpy(fullpath, home);
+                    strcat(fullpath, "/sync_dir_");
+                    strcat(fullpath, clientid);
+                    strcat(fullpath, "/");
+                    strcat(fullpath, file);
+                    strcat(fullpath, ".");
+                    strcat(fullpath, extension);
+
+                    //recebe arquivo
+                    receive_file(fullpath, ssl_backup);
+                }
+                else
+                    break;
+                
+            }
+        }
+    }
     
 
 	return 0;

@@ -21,6 +21,7 @@
 #define MAXCLIENTS 30
 
 //flags de controle
+#define BACKUP 'b'
 #define DELETE 'x'
 #define DOWNLOAD 'd'
 #define EXIT 'e'

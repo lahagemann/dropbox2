@@ -109,6 +109,99 @@ int insert_client(client *clientinfo){
     return NOT_VALID;
 }
 
+int count_clients()
+{
+    pthread_mutex_lock(&queue);
+    
+    int count = 0;
+    
+    for(i=0;i<MAXCLIENTS;i++){
+        if(connected_clients[i].logged_in == 1){
+            if(strcmp(connected_clients[i].userid, "\0") != 0){
+                count++;
+            }
+        }
+    }
+    
+    pthread_mutex_unlock(&queue);
+    
+    return count;
+}
+
+void* run_backup(void *ssl)
+{
+    char buffer[BUFFER_SIZE];
+    SSL *ssl_backup = (SSL *)ssl; 
+    
+    while(1)
+    {
+        bzero(buffer, BUFFER_SIZE;
+        SSL_read(ssl_backup, buffer, 1);
+        
+        if(buffer[0] == BACKUP)
+        {
+            // informa quantos clientes estão conectados no momento
+            int clis = count_clients();
+            
+            bzero(buffer, BUFFER_SIZE);
+            buffer[0] = clis;
+            SSL_write(ssl_backup, buffer, 1);
+            
+            for(int i = 0; i < clis; i++)
+            {
+                client c = connected_clients[i];
+                
+                //manda nome do cliente
+                bzero(buffer, BUFFER_SIZE);
+                strcpy(buffer, c.userid);
+                SSL_write(ssl_backup, buffer, MAXNAME);
+                
+                for(int j = 0; j < MAXFILES; j++)
+                {
+                    file_info f = c.fileinfo[j];
+                    if(strcmp(f.name, "\0") == 0)
+                        break;
+                    else
+                    {
+                        // envia comando de download
+                        bzero(buffer, BUFFER_SIZE);
+                        buffer[0] = DOWNLOAD;
+                        SSL_write(ssl_backup, buffer, 1);
+                        
+                        // envia nome do arquivo
+                        bzero(buffer, BUFFER_SIZE);
+                        strcpy(buffer, f.name);
+                        SSL_write(ssl_backup, buffer, MAXNAME);
+                        
+                        // envia extensão do arquivo
+                        bzero(buffer, BUFFER_SIZE);
+                        strcpy(buffer, f.extension);
+                        SSL_write(ssl_backup, buffer, MAXNAME);
+                        
+                        // send file funciona com full path
+                        char fullpath[256];
+                        strcpy(fullpath, home);
+                        strcat(fullpath, "/sync_dir_");
+                        strcat(fullpath, c.userid);
+                        strcat(fullpath, "/");
+                        strcat(fullpath, f.name);
+                        strcat(fullpath, ".");
+                        strcat(fullpath, f.extension);
+
+                        //envia arquivo
+                        send_file(fullpath, ssl_backup);
+                    }
+                }
+                
+                // envia comando de stop
+                bzero(buffer, BUFFER_SIZE);
+                buffer[0] = SYNC_END;
+                SSL_write(ssl_backup, buffer, 1);
+            }
+        }
+    }
+}
+
 void* run_client(void *ssl)
 {
     char buffer[BUFFER_SIZE];
