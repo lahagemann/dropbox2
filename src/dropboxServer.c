@@ -113,7 +113,7 @@ int count_clients()
 {
     pthread_mutex_lock(&queue);
     
-    int count = 0;
+    int count = 0, i;
     
     for(i=0;i<MAXCLIENTS;i++){
         if(connected_clients[i].logged_in == 1){
@@ -147,7 +147,8 @@ void* run_backup(void *ssl)
             buffer[0] = clis;
             SSL_write(ssl_backup, buffer, 1);
             
-            for(int i = 0; i < clis; i++)
+            int i, j;
+            for(i = 0; i < clis; i++)
             {
                 client c = connected_clients[i];
                 
@@ -156,7 +157,7 @@ void* run_backup(void *ssl)
                 strcpy(buffer, c.userid);
                 SSL_write(ssl_backup, buffer, MAXNAME);
                 
-                for(int j = 0; j < MAXFILES; j++)
+                for(j = 0; j < MAXFILES; j++)
                 {
                     file_info f = c.fileinfo[j];
                     if(strcmp(f.name, "\0") == 0)
@@ -709,7 +710,7 @@ int main(int argc, char *argv[])
     SSL_CTX *sync_context;
     SSL *ssl_sync;
     
-    const SLL_METHOD *backup_method;
+    const SSL_METHOD *backup_method;
     SSL_CTX *backup_context;
     SSL *ssl_backup;
 
@@ -785,8 +786,8 @@ int main(int argc, char *argv[])
 
     if( (socket_backup = accept(socket_backconn, (struct sockaddr *) &backup_addr, &backup_len)) )
     {
-        //inicializa o SSL para a thread de sync
-        ssl_sync = SSL_new(backup_context);
+        //inicializa o SSL para a thread de backup
+        ssl_backup = SSL_new(backup_context);
         SSL_set_fd(ssl_backup, socket_backup);
         int ssl_err = SSL_accept(ssl_backup);
         if(ssl_err <= 0)
@@ -796,7 +797,6 @@ int main(int argc, char *argv[])
         }
 
         pthread_t backup_thread;
-        // CRIAR A THREAD DE BACKUP
         pthread_create(&backup_thread, NULL, run_backup, (void*)ssl_backup);
         pthread_detach(backup_thread);
     }
