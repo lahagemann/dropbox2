@@ -68,8 +68,8 @@ int main(int argc, char *argv[])
     }
 
     // cria a pasta do backup se ela não existir.
-	strcpy(home,"/home/"); //home
-	//strcpy(home,"/home/grad/"); //ufrgs
+	//strcpy(home,"/home/"); //home
+	strcpy(home,"/home/grad/"); //ufrgs
 	strcat(home, getlogin());
 	strcat(home, "/backup");
 	

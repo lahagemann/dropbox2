@@ -133,24 +133,6 @@ void* run_backup(void *ssl)
     char buffer[BUFFER_SIZE];
     SSL *ssl_backup = (SSL *)ssl; 
     
-	int cliindex = return_client(client_mirror.userid, cli);
-	int socketfd = ci.socket_sync;
-	//tem que fazer cond wait com relação ao device que está conectado.
-    if(socketfd == connected_clients[cliindex].devices[0])
-    {
-        pthread_mutex_lock(&connected_clients[cliindex].mutex);
-        while(state != STATE_DEV1)
-            pthread_cond_wait(&connected_clients[cliindex].cond, &connected_clients[cliindex].mutex);
-        pthread_mutex_unlock(&connected_clients[cliindex].mutex);
-    }
-    else
-    {
-        pthread_mutex_lock(&connected_clients[cliindex].mutex);
-        while(state != STATE_DEV2)
-            pthread_cond_wait(&connected_clients[cliindex].cond, &connected_clients[cliindex].mutex);
-        pthread_mutex_unlock(&connected_clients[cliindex].mutex);
-    }
-
     while(1)
     {
         bzero(buffer, BUFFER_SIZE);
@@ -219,14 +201,6 @@ void* run_backup(void *ssl)
             }
         }
     }
-
-	pthread_mutex_lock(&connected_clients[cliindex].mutex);
-        if(socketfd == connected_clients[cliindex].devices[0] && connected_clients[cliindex].devices[1] != 0)
-            state = STATE_DEV2;
-        else
-            state = STATE_DEV1;
-        pthread_cond_signal(&connected_clients[cliindex].cond);
-        pthread_mutex_unlock(&connected_clients[cliindex].mutex);
 }
 
 void* run_client(void *ssl)
@@ -693,8 +667,8 @@ int main(int argc, char *argv[])
     int i;
     char buffer[BUFFER_SIZE];
 
-    strcpy(home,"/home/");    //home
-    //strcpy(home,"/home/grad/");    //ufrgs
+    //strcpy(home,"/home/");    //home
+    strcpy(home,"/home/grad/");    //ufrgs
     strcat(home, getlogin());
     strcat(home, "/server");
 

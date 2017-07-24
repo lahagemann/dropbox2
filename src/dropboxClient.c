@@ -379,8 +379,8 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    strcpy(home,"/home/"); //home
-    //strcpy(home,"/home/grad/");    //ufrgs
+    //strcpy(home,"/home/"); //home
+    strcpy(home,"/home/grad/");    //ufrgs
     strcat(home, getlogin());
     
     init_client(&self, home, argv[1]);
@@ -520,8 +520,8 @@ int main(int argc, char *argv[])
             {
                 // pega o diretório Downloads do usuário e baixa para lá.
                 char user_downloads_dir[256];
-                strcpy(user_downloads_dir, "/home/");
-                //strcpy(user_downloads_dir, "/home/grad/");
+                //strcpy(user_downloads_dir, "/home/");
+                strcpy(user_downloads_dir, "/home/grad/");
                 strcat(user_downloads_dir, getlogin());
                 strcat(user_downloads_dir, "/Downloads/");
                 strcat(user_downloads_dir, filepath);            
